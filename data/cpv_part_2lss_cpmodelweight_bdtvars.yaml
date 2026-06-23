@@ -1,0 +1,185 @@
+treename: Events
+
+# Keep one event_mod5 fold as a default holdout, similar in spirit to the
+# previous trainings. Override with --extra-selection-* or make a copy of this
+# config if you want a different split.
+selection:
+   event_mod5 != 4
+
+test_time_selection:
+   event_mod5 == 4
+
+new_variables:
+   is_cp_even: cp_label == 0
+   is_cp_odd: cp_label == 1
+   event_int64: ak.values_astype(event, np.int64)
+   loss_weight: np.abs(cp_model_weight)
+   era_is_2022: (eraFlag == 0) * 1.
+   era_is_2022EE: (eraFlag == 1) * 1.
+   era_is_2023: (eraFlag == 2) * 1.
+   era_is_2023BPix: (eraFlag == 3) * 1.
+
+   jet_pt: np.stack([Jet0_pt, Jet1_pt, Jet2_pt, Jet3_pt, Jet4_pt, Jet5_pt, Jet6_pt, Jet7_pt], axis=1)
+   jet_eta: np.stack([Jet0_eta, Jet1_eta, Jet2_eta, Jet3_eta, Jet4_eta, Jet5_eta, Jet6_eta, Jet7_eta], axis=1)
+   jet_phi: np.stack([Jet0_phi, Jet1_phi, Jet2_phi, Jet3_phi, Jet4_phi, Jet5_phi, Jet6_phi, Jet7_phi], axis=1)
+   jet_mass: np.stack([Jet0_mass, Jet1_mass, Jet2_mass, Jet3_mass, Jet4_mass, Jet5_mass, Jet6_mass, Jet7_mass], axis=1)
+   jet_mask: np.stack([Jet0_mask, Jet1_mask, Jet2_mask, Jet3_mask, Jet4_mask, Jet5_mask, Jet6_mask, Jet7_mask], axis=1)
+   jet_hj_score: np.stack([Jet0_Hj_score, Jet1_Hj_score, Jet2_Hj_score, Jet3_Hj_score, Jet4_Hj_score, Jet5_Hj_score, Jet6_Hj_score, Jet7_Hj_score], axis=1)
+   jet_no_btag: np.stack([Jet0_noBTag, Jet1_noBTag, Jet2_noBTag, Jet3_noBTag, Jet4_noBTag, Jet5_noBTag, Jet6_noBTag, Jet7_noBTag], axis=1)
+   jet_loose_btag: np.stack([Jet0_isLooseBTag, Jet1_isLooseBTag, Jet2_isLooseBTag, Jet3_isLooseBTag, Jet4_isLooseBTag, Jet5_isLooseBTag, Jet6_isLooseBTag, Jet7_isLooseBTag], axis=1)
+   jet_medium_btag: np.stack([Jet0_isMediumBTag, Jet1_isMediumBTag, Jet2_isMediumBTag, Jet3_isMediumBTag, Jet4_isMediumBTag, Jet5_isMediumBTag, Jet6_isMediumBTag, Jet7_isMediumBTag], axis=1)
+   jet_tight_btag: np.stack([Jet0_isTightBTag, Jet1_isTightBTag, Jet2_isTightBTag, Jet3_isTightBTag, Jet4_isTightBTag, Jet5_isTightBTag, Jet6_isTightBTag, Jet7_isTightBTag], axis=1)
+   jet_from_hadtop: np.stack([Jet0_isFromHadTop, Jet1_isFromHadTop, Jet2_isFromHadTop, Jet3_isFromHadTop, Jet4_isFromHadTop, Jet5_isFromHadTop, Jet6_isFromHadTop, Jet7_isFromHadTop], axis=1)
+   jet_p4: _p4_from_ptetaphim(jet_pt, jet_eta, jet_phi, jet_mass)
+   jet_px: jet_p4.px
+   jet_py: jet_p4.py
+   jet_pz: jet_p4.pz
+   jet_energy: jet_p4.energy
+   jet_logpt: np.log(np.maximum(jet_pt, 1.0e-6))
+   jet_logenergy: np.log(np.maximum(jet_energy, 1.0e-6))
+   jet_dphi_l1: np.abs(np.arctan2(np.sin(jet_phi - np.expand_dims(LepFO1_phi, 1)), np.cos(jet_phi - np.expand_dims(LepFO1_phi, 1))))
+   jet_dR_l1: np.sqrt((jet_eta - np.expand_dims(LepFO1_eta, 1))**2 + jet_dphi_l1**2)
+   mindRlep1jet: np.min(np.where(jet_mask > 0, jet_dR_l1, 999.), axis=1)
+   jet_dphi_l2: np.abs(np.arctan2(np.sin(jet_phi - np.expand_dims(LepFO2_phi, 1)), np.cos(jet_phi - np.expand_dims(LepFO2_phi, 1))))
+   jet_dR_l2: np.sqrt((jet_eta - np.expand_dims(LepFO2_eta, 1))**2 + jet_dphi_l2**2)
+   mindRlep2jet: np.min(np.where(jet_mask > 0, jet_dR_l2, 999.), axis=1)
+   jet_pair_dphi: np.abs(np.arctan2(np.sin(jet_phi[:, :, None] - jet_phi[:, None, :]), np.cos(jet_phi[:, :, None] - jet_phi[:, None, :])))
+   jet_pair_dR: np.sqrt((jet_eta[:, :, None] - jet_eta[:, None, :])**2 + jet_pair_dphi**2)
+   jet_pair_mask: (jet_mask[:, :, None] > 0) & (jet_mask[:, None, :] > 0) & (np.arange(8)[None, :, None] < np.arange(8)[None, None, :])
+   avg_dr_jet: np.sum(np.sum(np.where(jet_pair_mask, jet_pair_dR, 0.), axis=2), axis=1) / np.maximum(np.sum(np.sum(jet_pair_mask, axis=2), axis=1), 1)
+
+   lep_pt: np.stack([LepFO1_conePt, LepFO2_conePt, met], axis=1)
+   lep_eta: np.stack([LepFO1_eta, LepFO2_eta, met * 0.], axis=1)
+   lep_phi: np.stack([LepFO1_phi, LepFO2_phi, met_phi], axis=1)
+   lep_mass: np.stack([LepFO1_mass, LepFO2_mass, met * 0.], axis=1)
+   lep_mask: np.stack([LepFO1_mask, LepFO2_mask, met * 0. + 1.], axis=1)
+   lep_pdgid: np.stack([LepFO1_pdgId, LepFO2_pdgId, met * 0.], axis=1)
+   lep_is_met: np.stack([met * 0., met * 0., met * 0. + 1.], axis=1)
+   lep_p4: _p4_from_ptetaphim(lep_pt, lep_eta, lep_phi, lep_mass)
+   lep_px: lep_p4.px
+   lep_py: lep_p4.py
+   lep_pz: lep_p4.pz
+   lep_energy: lep_p4.energy
+   lep_logpt: np.log(np.maximum(lep_pt, 1.0e-6))
+   lep_logenergy: np.log(np.maximum(lep_energy, 1.0e-6))
+   lep_pdgid_scaled: lep_pdgid / 13.
+
+preprocess:
+   method: manual
+   data_fraction: 0.25
+
+inputs:
+   jet_features:
+      length: 8
+      pad_mode: constant
+      vars:
+         - [jet_logpt, 4, 1]
+         - [jet_logenergy, 4, 1]
+         - [jet_eta, null]
+         - [jet_hj_score, null]
+         - [jet_no_btag, null]
+         - [jet_loose_btag, null]
+         - [jet_medium_btag, null]
+         - [jet_tight_btag, null]
+         - [jet_from_hadtop, null]
+   jet_vectors:
+      length: 8
+      pad_mode: constant
+      vars:
+         - [jet_px, null]
+         - [jet_py, null]
+         - [jet_pz, null]
+         - [jet_energy, null]
+   jet_mask:
+      length: 8
+      pad_mode: constant
+      vars:
+         - [jet_mask, null]
+   lep_features:
+      length: 3
+      pad_mode: constant
+      vars:
+         - [lep_logpt, 4, 1]
+         - [lep_logenergy, 4, 1]
+         - [lep_eta, null]
+         - [lep_pdgid_scaled, null]
+         - [lep_is_met, null]
+   lep_vectors:
+      length: 3
+      pad_mode: constant
+      vars:
+         - [lep_px, null]
+         - [lep_py, null]
+         - [lep_pz, null]
+         - [lep_energy, null]
+   lep_mask:
+      length: 3
+      pad_mode: constant
+      vars:
+         - [lep_mask, null]
+   event_features:
+      length: 1
+      pad_mode: constant
+      vars:
+         - [cpv_dEtaLL_BBframe, auto, 1]
+         - [cpv_dEtaBB_LLframe, auto, 1]
+         - [cpv_dPhiLL_BBframe, auto, 1]
+         - [cpv_dPhiBB_LLframe, auto, 1]
+         - [cpv_dEtaBB, auto, 1]
+         - [cpv_mTTH, auto, 1]
+         - [cpv_costheta_lep, auto, 1]
+         - [cpv_costheta_had, auto, 1]
+         - [cpv_b1, auto, 1]
+         - [cpv_b2, auto, 1]
+         - [cpv_b3, auto, 1]
+         - [cpv_b4, auto, 1]
+         - [mindRlep1jet, auto, 1]
+         - [mindRlep2jet, auto, 1]
+         - [avg_dr_jet, auto, 1]
+         - [era_is_2022, null]
+         - [era_is_2022EE, null]
+         - [era_is_2023, null]
+         - [era_is_2023BPix, null]
+   loss_weight:
+      length: 1
+      pad_mode: constant
+      vars:
+         - [loss_weight, null]
+
+labels:
+   type: simple
+   value: [is_cp_even, is_cp_odd]
+
+observers:
+   - run
+   - luminosityBlock
+   - event_int64
+   - event_mod2
+   - event_mod5
+   - eraFlag
+   - cp_label
+   - target_is_cpodd
+   - process_id
+   - weight
+   - mcWeight
+   - mcSampleWeight
+   - cp_model_weight
+   - met
+   - met_phi
+   - cpv_dEtaLL_BBframe
+   - cpv_dEtaBB_LLframe
+   - cpv_dPhiLL_BBframe
+   - cpv_dPhiBB_LLframe
+   - cpv_dEtaBB
+   - cpv_mTTH
+   - cpv_costheta_lep
+   - cpv_costheta_had
+   - cpv_b1
+   - cpv_b2
+   - cpv_b3
+   - cpv_b4
+   - mindRlep1jet
+   - mindRlep2jet
+   - avg_dr_jet
+   - jet_logenergy
+   - jet_energy
