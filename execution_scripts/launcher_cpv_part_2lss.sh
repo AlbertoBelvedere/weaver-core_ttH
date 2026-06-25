@@ -24,7 +24,7 @@ DATADIR=${DATADIR:-/work/abelvede/multilepton-analysis/neuralnetwork/snapshots/c
 batch_size=${BATCH:-512}
 gpu=${GPU:-0}
 extra_args=("${@:1}")
-start_lr=${START_LR:-1e-2}
+start_lr=${START_LR:-1e-4}
 num_epochs=${NUM_EPOCHS:-50}
 weight_mode=${WEIGHT_MODE:-fullweight_bdtvars}
 data_config=${DATA_CONFIG:-data/cpv_part_2lss_${weight_mode}.yaml}
@@ -79,6 +79,9 @@ training_name=cpv_part_2lss_${weight_mode}_${loss_tag}_${model_tag}_fetch1_batch
 mkdir -p result/cpv_part_2lss logs_full_model
 
 python weaver/train.py --data-train \
+    "cp_even:${DATADIR}/*/TTH_ctcvcp_sm_cp_even.root" \
+    "cp_odd:${DATADIR}/*/TTH_ctcvcp_sm_cp_odd.root" \
+    --data-val \
     "cp_even:${DATADIR}/*/TTH_ctcvcp_sm_cp_even.root" \
     "cp_odd:${DATADIR}/*/TTH_ctcvcp_sm_cp_odd.root" \
     --fetch-step 1 --batch-size "${batch_size}" --start-lr "${start_lr}" \

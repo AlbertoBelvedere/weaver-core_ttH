@@ -2,7 +2,7 @@
 #Four combination using 
 #WEIGHT_MODE=fullweight_bdtvars or WEIGHT_MODE=cpmodelweight_bdtvars,  
 #AND
-#MODEL_VARIANT=largerfc or MODEL_VARIANT=eventmlp
+#MODEL_VARIANT=largerfc or MODEL_VARIANT=eventmlp or MODEL_VARIANT=objectonly or eventmlpwide
 #each of the four should be trained both for 
 #EVAL_SPLIT=test and EVAL_SPLIT=train.
 
@@ -31,7 +31,7 @@ DATADIR=${DATADIR:-/work/abelvede/multilepton-analysis/neuralnetwork/snapshots/c
 batch_size=${BATCH:-512}
 gpu=${GPU:-0}
 extra_args=("${@:1}")
-start_lr=${START_LR:-1e-2}
+start_lr=${START_LR:-1e-4}
 weight_mode=${WEIGHT_MODE:-fullweight_bdtvars}
 data_config=${DATA_CONFIG:-data/cpv_part_2lss_${weight_mode}.yaml}
 loss_tag=${LOSS_TAG:-classbalancedloss}
