@@ -1,0 +1,257 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=0.85in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!45!black,
+  urlcolor=blue!45!black
+}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.18}
+\Urlmuskip=0mu plus 2mu
+\sloppy
+\emergencystretch=3em
+
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+
+\title{\textbf{CPV 2lss Weaver Project Status}}
+\author{Local project summary}
+\date{August 21, 2026}
+
+\begin{document}
+\maketitle
+
+\section*{Executive Summary}
+
+The current project baseline is now \code{eventmlp_fullsplit}, batch \code{512}, learning rate \code{1e-4}. The model choice is close rather than decisive on held-out AUC: \code{largerfc_fullsplit} has \code{0.64848}, while \code{eventmlp_fullsplit} has \code{0.64762}. The reason to prefer \code{eventmlp_fullsplit} is the smaller overtraining signature. Its train/test AUC gap is about \code{0.03256}, compared with about \code{0.03984} for \code{largerfc_fullsplit}.
+
+The recommended current configuration is:
+
+\begin{itemize}[leftmargin=*]
+  \item Data config: \code{data/cpv_part_2lss_fullweight_bdtvars.yaml}
+  \item Network config: \code{data/cpv_part_2lss_eventmlp_model.py}
+  \item Model variant: \code{MODEL_VARIANT=eventmlp}
+  \item Model tag: \code{MODEL_TAG=eventmlp_fullsplit_lr1em4}
+  \item Loss mode: class-balanced event-weighted cross entropy
+  \item Loss weight branch: \code{abs(weight)}
+  \item Optimizer: \code{ranger}
+  \item Batch size: \code{512}
+  \item Learning rate: \code{1e-4}
+  \item Epochs: \code{50}
+  \item Split: train \code{event_mod5 < 3}, validation \code{event_mod5 == 3}, held-out/test \code{event_mod5 == 4}
+\end{itemize}
+
+This should be treated as a good starting point, not as a frozen optimum, when adding 2024 data. The current era feature block only encodes 2022, 2022EE, 2023, and 2023BPix. Adding 2024 means updating the era flags and regenerating preprocessing, then rerunning at least a small hyperparameter sanity scan.
+
+\section*{Default Files and Launchers}
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.28\linewidth} >{\raggedright\arraybackslash}p{0.66\linewidth}}
+\toprule
+\textbf{Role} & \textbf{Current file or default} \\
+\midrule
+Training launcher & \code{execution_scripts/launcher_cpv_part_2lss.sh} \\
+Inference/test launcher & \code{execution_scripts/launcher_cpv_part_2lss_test.sh} \\
+Slurm wrapper & \code{execution_scripts/submit_one_job.sh} \\
+Default data snapshot & \path{/work/abelvede/multilepton-analysis/neuralnetwork/snapshots/cpv_part_2lss/2026-05-28} \\
+Default data config & \code{data/cpv_part_2lss_fullweight_bdtvars.yaml} via \code{WEIGHT_MODE=fullweight_bdtvars} \\
+Alternative data config & \code{data/cpv_part_2lss_cpmodelweight_bdtvars.yaml} via \code{WEIGHT_MODE=cpmodelweight_bdtvars} \\
+Default model config & \code{data/cpv_part_2lss_eventmlp_model.py} via \code{MODEL_VARIANT=eventmlp} \\
+Default model tag & \code{eventmlp_fullsplit_lr1em4}; full training name ends with \code{fetch1_batch512_lr0p0001} \\
+Larger-FC model config & \code{data/cpv_part_2lss_model.py} via \code{MODEL_VARIANT=largerfc} \\
+Wide Event-MLP config & \code{data/cpv_part_2lss_eventmlp_wide_model.py} via \code{MODEL_VARIANT=eventmlpwide} \\
+Object-only config & \code{data/cpv_part_2lss_objectonly_model.py} via \code{MODEL_VARIANT=objectonly} \\
+Evaluation helper & \code{evaluation/evaluate_cpv_part_2lss.py} \\
+Training outputs & \code{result/cpv_part_2lss/<training_name>/fullmodel*} \\
+Prediction outputs & \path{result/cpv_part_2lss/<training_name>/predict_output_<split>*.root} \\
+Training logs & \code{logs_full_model/log_fullmodel_<training_name>.log} \\
+Test logs & \code{logs_full_model/log_test_<training_name>_<split>.log} \\
+Plots and summaries & \code{evaluation_output/<training_name>/summary.txt}, ROC plots, confusion matrices, loss curves \\
+\bottomrule
+\end{longtable}
+
+The launcher builds training names from the CPV task name, weight mode, loss tag, model tag, fetch step, batch size, and learning-rate tag. The default launcher values are:
+
+\begin{itemize}[leftmargin=*]
+  \item \code{BATCH=512}
+  \item \code{START_LR=1e-4}
+  \item \code{NUM_EPOCHS=50}
+  \item \code{WEIGHT_MODE=fullweight_bdtvars}
+  \item \code{LOSS_TAG=classbalancedloss}
+  \item \code{MODEL_VARIANT=eventmlp}
+  \item \code{MODEL_TAG=eventmlp_fullsplit_lr1em4}
+\end{itemize}
+
+\section*{Data and Split Status}
+
+The current full-weight BDT-variable data config uses:
+
+\begin{itemize}[leftmargin=*]
+  \item Labels: \code{is_cp_even: cp_label == 0}, \code{is_cp_odd: cp_label == 1}
+  \item Loss weight: \code{loss_weight: np.abs(weight)}
+  \item Holdout selection in the YAML: \code{selection: event_mod5 != 4}
+  \item Test-time selection in the YAML: \code{test_time_selection: event_mod5 == 4}
+  \item Additional training split: \code{--extra-selection-train 'event_mod5 < 3'}
+  \item Additional validation split: \code{--extra-selection-val 'event_mod5 == 3'}
+  \item Object inputs: 8 jets, 3 lepton/MET objects, masks, four-vectors, b-tag categories, hadronic-top flags
+  \item Event scalar inputs: CPV angles/kinematics, \code{cpv_b1} through \code{cpv_b4}, minimum lepton-jet distances, average jet-pair \code{dR}, and era one-hot flags
+\end{itemize}
+
+The \code{cpmodelweight_bdtvars} config is structurally similar but changes the loss weight to \code{np.abs(cp_model_weight)}. In the measured runs, the full event weight configuration was better for the final baseline.
+
+\section*{Model Variants}
+
+All model variants share the same main object backbone: a \code{ParticleTransformerTagger} over jet and lepton/MET objects. The common default backbone uses:
+
+\begin{itemize}[leftmargin=*]
+  \item \code{embed_dims=(128, 512, 128)}
+  \item \code{pair_embed_dims=(64, 64, 64)}
+  \item \code{num_heads=8}
+  \item \code{num_layers=8}
+  \item \code{num_cls_layers=2}
+  \item \code{activation="gelu"}
+\end{itemize}
+
+\subsection*{\code{largerfc}}
+
+File: \code{data/cpv_part_2lss_model.py}
+
+\code{largerfc} runs the object transformer, concatenates the normalized event-level scalar features directly to the transformer representation, and then applies a larger fully connected classification head:
+
+\begin{center}
+\code{fc_params=((256, 0.1), (128, 0.1), (64, 0.1))}
+\end{center}
+
+This variant remains important because it has the highest held-out AUC found locally. It is simple and avoids adding a separate preprocessing subnetwork for the scalar event variables. It is no longer the default baseline because the corresponding train/test gap is larger than for \code{eventmlp_fullsplit}.
+
+\subsection*{\code{eventmlp}}
+
+File: \code{data/cpv_part_2lss_eventmlp_model.py}
+
+\code{eventmlp} also uses the same object transformer, but it first passes event-level scalar features through a small MLP:
+
+\begin{center}
+\code{event_embed_dims=(64, 64)}, \code{event_dropout=0.1}
+\end{center}
+
+The embedded event representation is then concatenated to the transformer output, followed by a smaller classifier head:
+
+\begin{center}
+\code{fc_params=((128, 0.1), (64, 0.1))}
+\end{center}
+
+This is now the default baseline. It gives a held-out AUC very close to \code{largerfc}, but with less overtraining: the train/test AUC gap is about \code{0.03256} instead of \code{0.03984}. This makes it the more conservative default for the next round, especially before adding 2024 data.
+
+\subsection*{\code{eventmlpwide}}
+
+File: \code{data/cpv_part_2lss_eventmlp_wide_model.py}
+
+This is the wider event-feature MLP variant:
+
+\begin{center}
+\code{event_embed_dims=(128, 128, 64)}, \code{event_dropout=0.1}
+\end{center}
+
+It did not beat the smaller event MLP or \code{largerfc} in the historical runs.
+
+\subsection*{\code{objectonly}}
+
+File: \code{data/cpv_part_2lss_objectonly_model.py}
+
+This variant ignores the event scalar inputs and classifies from the object transformer representation only. It was useful as an ablation. Its best held-out AUC was below the main event-feature models, confirming that the scalar CPV/BDT-style variables are helpful.
+
+\section*{Run Results}
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.34\linewidth} r r >{\raggedright\arraybackslash}p{0.30\linewidth}}
+\toprule
+\textbf{Run} & \textbf{Held-out AUC} & \textbf{Train AUC} & \textbf{Comment} \\
+\midrule
+\code{eventmlp fullsplit, batch512, lr1e-4} & 0.64762 & 0.68018 & Default baseline; smaller AUC gap, about 0.03256 \\
+\code{largerfc fullsplit, batch512, lr1e-4} & 0.64848 & 0.68832 & Highest held-out AUC; larger AUC gap, about 0.03984 \\
+\code{largerfc, batch512, lr1e-4} & 0.64771 & 0.68583 & Earlier tag, similar AUC but more overtraining than \code{eventmlp} \\
+\code{largerfc fullsplit, batch1024, lr1e-4} & 0.64762 & 0.67909 & Batch 1024 did not improve held-out AUC \\
+\code{largerfc dropout0p2, batch512, lr1e-4} & 0.64630 & 0.68982 & More dropout did not help \\
+\code{largerfc wd1e-4, batch512, lr1e-4} & 0.64491 & 0.66167 & Weight decay reduced overtraining but not best held-out AUC \\
+\code{eventmlp fullsplit, batch512, lr5e-5} & 0.64436 & 0.66502 & Lower LR did not improve \code{eventmlp} \\
+\code{objectonly, batch512, lr1e-4} & 0.63838 & 0.65624 & Event features matter \\
+\code{cpmodelweight eventmlp, batch512, lr0.01} & 0.62732 & 0.63501 & Older high-LR run \\
+\code{cpmodelweight largerfc, batch512, lr0.01} & 0.62423 & 0.63259 & Older high-LR run \\
+\code{fullweight weightedloss, batch512, lr0.01} & 0.61578 & -- & Early weighted-loss baseline \\
+\bottomrule
+\end{longtable}
+
+The important trend is that the serious later comparison moved away from the old \code{lr=0.01} trials and settled on \code{fullweight_bdtvars + classbalancedloss}, with \code{lr=1e-4}. The \code{largerfc} and \code{eventmlp} results are close. With overtraining included in the decision, the launcher default now points to \code{eventmlp_fullsplit}.
+
+\section*{Current Recommendation}
+
+For the next training round without changing the dataset composition, use:
+
+\begin{center}
+\small
+\code{./execution_scripts/submit_one_job.sh ./execution_scripts/launcher_cpv_part_2lss.sh}
+\end{center}
+
+or explicitly:
+
+\begin{center}
+\small
+\code{./execution_scripts/submit_one_job.sh WEIGHT_MODE=fullweight_bdtvars MODEL_VARIANT=eventmlp MODEL_TAG=eventmlp_fullsplit_lr1em4 START_LR=1e-4 BATCH=512 ./execution_scripts/launcher_cpv_part_2lss.sh}
+\end{center}
+
+For producing test/train/validation prediction outputs, use:
+
+\begin{center}
+\small
+\code{./execution_scripts/submit_one_job.sh EVAL_SPLIT=test ./execution_scripts/launcher_cpv_part_2lss_test.sh}
+\end{center}
+
+and repeat with \code{EVAL_SPLIT=train} or \code{EVAL_SPLIT=val} when needed. The test launcher can also take \code{MODEL_PREFIX} and \code{PREDICT_OUTPUT} if evaluating a specific epoch rather than the default model prefix.
+
+\section*{Impact of Adding 2024}
+
+Adding 2024 data is likely to require more than changing \code{DATADIR}. The current configs define era one-hot flags only for:
+
+\begin{center}
+\code{era_is_2022}, \code{era_is_2022EE}, \code{era_is_2023}, \code{era_is_2023BPix}
+\end{center}
+
+Before retraining with 2024, update the data configs to include the correct 2024 era categories according to the upstream \code{eraFlag} convention. Then regenerate the auto preprocessing configs, because the current auto-normalization constants were fitted on the previous 2022--2023 snapshot.
+
+Suggested retuning path after adding 2024:
+
+\begin{enumerate}[leftmargin=*]
+  \item Update the YAML era flags and event feature list for 2024.
+  \item Regenerate or refresh auto preprocessing for \code{fullweight_bdtvars}; optionally do the same for \code{cpmodelweight_bdtvars}.
+  \item Train \code{eventmlp}, batch 512, \code{lr=1e-4}, as the reference.
+  \item Train \code{largerfc}, batch 512, \code{lr=1e-4}, as the higher-AUC but more-overtrained cross-check.
+  \item If compute allows, scan \code{lr=5e-5} and \code{batch=1024} for the better of those two models.
+  \item Re-evaluate train, validation, and held-out/test splits with the same weighted ROC and confusion matrix tooling.
+\end{enumerate}
+
+\section*{Evidence Files}
+
+Key files used for this status summary. The long result names in the table above are shortened labels for these output directories.
+
+\begin{itemize}[leftmargin=*]
+  \item \path{evaluation_output/cpv_part_2lss_fullweight_bdtvars_classbalancedloss_eventmlp_fullsplit_lr1em4_fetch1_batch512_lr0p0001/summary.txt}
+  \item \path{evaluation_output/cpv_part_2lss_fullweight_bdtvars_classbalancedloss_largerfc_fullsplit_fetch1_batch512_lr0p0001/summary.txt}
+  \item \path{evaluation_output/cpv_part_2lss_fullweight_bdtvars_classbalancedloss_largerfc_fullsplit_batch1024_fetch1_batch1024_lr0p0001/summary.txt}
+  \item \path{execution_scripts/launcher_cpv_part_2lss.sh}
+  \item \path{execution_scripts/launcher_cpv_part_2lss_test.sh}
+  \item \path{data/cpv_part_2lss_fullweight_bdtvars.yaml}
+  \item \path{data/cpv_part_2lss_model.py}
+  \item \path{data/cpv_part_2lss_eventmlp_model.py}
+\end{itemize}
+
+\end{document}

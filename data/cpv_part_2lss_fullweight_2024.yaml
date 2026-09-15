@@ -1,8 +1,8 @@
 treename: Events
 
-# Keep one event_mod5 fold as a default holdout, similar in spirit to the
-# previous trainings. Override with --extra-selection-* or make a copy of this
-# config if you want a different split.
+# Common schema for the 2022--2024 ntuples. The 2024 production does not
+# contain the Higgs/top tagger branches or the removed CPV scalar branches
+# (costheta_lep, costheta_had, and b1--b4).
 selection:
    event_mod5 != 4
 
@@ -126,12 +126,6 @@ inputs:
          - [cpv_dPhiBB_LLframe, auto, 1]
          - [cpv_dEtaBB, auto, 1]
          - [cpv_mTTH, auto, 1]
-         - [cpv_costheta_lep, auto, 1]
-         - [cpv_costheta_had, auto, 1]
-         - [cpv_b1, auto, 1]
-         - [cpv_b2, auto, 1]
-         - [cpv_b3, auto, 1]
-         - [cpv_b4, auto, 1]
          - [mindRlep1jet, auto, 1]
          - [mindRlep2jet, auto, 1]
          - [avg_dr_jet, auto, 1]
@@ -172,12 +166,6 @@ observers:
    - cpv_dPhiBB_LLframe
    - cpv_dEtaBB
    - cpv_mTTH
-   - cpv_costheta_lep
-   - cpv_costheta_had
-   - cpv_b1
-   - cpv_b2
-   - cpv_b3
-   - cpv_b4
    - mindRlep1jet
    - mindRlep2jet
    - avg_dr_jet

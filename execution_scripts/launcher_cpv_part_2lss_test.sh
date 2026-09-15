@@ -1,5 +1,9 @@
 #!/bin/bash
-#Four combination using 
+#Default baseline:
+#WEIGHT_MODE=fullweight_bdtvars, MODEL_VARIANT=eventmlp,
+#MODEL_TAG=eventmlp_fullsplit_lr1em4, BATCH=512, START_LR=1e-4.
+#
+#Other combinations using
 #WEIGHT_MODE=fullweight_bdtvars or WEIGHT_MODE=cpmodelweight_bdtvars,  
 #AND
 #MODEL_VARIANT=largerfc or MODEL_VARIANT=eventmlp or MODEL_VARIANT=objectonly or eventmlpwide
@@ -24,7 +28,7 @@ WEAVER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${WEAVER_DIR}"
 
 # Input ntuples produced by produce_ntuples_train_tth_cpv.py.
-DATADIR=${DATADIR:-/work/abelvede/multilepton-analysis/neuralnetwork/snapshots/cpv_part_2lss/2026-05-28}
+DATADIR=${DATADIR:-/work/abelvede/multilepton-analysis/neuralnetwork/snapshots/cpv_part_2lss/2026-08-21}
 
 # Runtime settings. Keep these consistent with the training launcher unless
 # MODEL_PREFIX is set explicitly.
@@ -35,7 +39,7 @@ start_lr=${START_LR:-1e-4}
 weight_mode=${WEIGHT_MODE:-fullweight_bdtvars}
 data_config=${DATA_CONFIG:-data/cpv_part_2lss_${weight_mode}.yaml}
 loss_tag=${LOSS_TAG:-classbalancedloss}
-model_variant=${MODEL_VARIANT:-largerfc}
+model_variant=${MODEL_VARIANT:-eventmlp}
 eval_split=${EVAL_SPLIT:-test}
 
 case "${model_variant}" in
@@ -45,7 +49,7 @@ case "${model_variant}" in
         ;;
     eventmlp)
         network_config=${NETWORK_CONFIG:-data/cpv_part_2lss_eventmlp_model.py}
-        model_tag=${MODEL_TAG:-eventmlp}
+        model_tag=${MODEL_TAG:-eventmlp_fullsplit_lr1em4}
         ;;
     eventmlpwide)
         network_config=${NETWORK_CONFIG:-data/cpv_part_2lss_eventmlp_wide_model.py}
@@ -150,8 +154,8 @@ fi
 
 python weaver/train.py --run-mode test \
     --data-test \
-    "cp_even:${DATADIR}/*/TTH_ctcvcp_sm_cp_even.root" \
-    "cp_odd:${DATADIR}/*/TTH_ctcvcp_sm_cp_odd.root" \
+    "cp_even:${DATADIR}/*/TTH_ctcvcp*_cp_even.root" \
+    "cp_odd:${DATADIR}/*/TTH_ctcvcp*_cp_odd.root" \
     --batch-size "${batch_size}" \
     --data-config "${data_config}" --network-config "${network_config}" \
     --model-prefix "${model_prefix}" \

@@ -18,9 +18,11 @@ WEAVER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${WEAVER_DIR}"
 
 # Input ntuples produced by produce_ntuples_train_tth_cpv.py.
-DATADIR=${DATADIR:-/work/abelvede/multilepton-analysis/neuralnetwork/snapshots/cpv_part_2lss/2026-05-28}
+DATADIR=${DATADIR:-/work/abelvede/multilepton-analysis/neuralnetwork/snapshots/cpv_part_2lss/2026-08-21}
 
 # Runtime settings.
+# Default baseline: eventmlp_fullsplit, batch 512, LR 1e-4. This is favored
+# over largerfc because it has nearly the same held-out AUC with less overtraining.
 batch_size=${BATCH:-512}
 gpu=${GPU:-0}
 extra_args=("${@:1}")
@@ -29,7 +31,7 @@ num_epochs=${NUM_EPOCHS:-50}
 weight_mode=${WEIGHT_MODE:-fullweight_bdtvars}
 data_config=${DATA_CONFIG:-data/cpv_part_2lss_${weight_mode}.yaml}
 loss_tag=${LOSS_TAG:-classbalancedloss}
-model_variant=${MODEL_VARIANT:-largerfc}
+model_variant=${MODEL_VARIANT:-eventmlp}
 
 case "${model_variant}" in
     largerfc)
@@ -38,7 +40,7 @@ case "${model_variant}" in
         ;;
     eventmlp)
         network_config=${NETWORK_CONFIG:-data/cpv_part_2lss_eventmlp_model.py}
-        model_tag=${MODEL_TAG:-eventmlp}
+        model_tag=${MODEL_TAG:-eventmlp_fullsplit_lr1em4}
         ;;
     eventmlpwide)
         network_config=${NETWORK_CONFIG:-data/cpv_part_2lss_eventmlp_wide_model.py}
@@ -79,11 +81,11 @@ training_name=cpv_part_2lss_${weight_mode}_${loss_tag}_${model_tag}_fetch1_batch
 mkdir -p result/cpv_part_2lss logs_full_model
 
 python weaver/train.py --data-train \
-    "cp_even:${DATADIR}/*/TTH_ctcvcp_sm_cp_even.root" \
-    "cp_odd:${DATADIR}/*/TTH_ctcvcp_sm_cp_odd.root" \
+    "cp_even:${DATADIR}/*/TTH_ctcvcp*_cp_even.root" \
+    "cp_odd:${DATADIR}/*/TTH_ctcvcp*_cp_odd.root" \
     --data-val \
-    "cp_even:${DATADIR}/*/TTH_ctcvcp_sm_cp_even.root" \
-    "cp_odd:${DATADIR}/*/TTH_ctcvcp_sm_cp_odd.root" \
+    "cp_even:${DATADIR}/*/TTH_ctcvcp*_cp_even.root" \
+    "cp_odd:${DATADIR}/*/TTH_ctcvcp*_cp_odd.root" \
     --fetch-step 1 --batch-size "${batch_size}" --start-lr "${start_lr}" \
     --data-config "${data_config}" --network-config "${network_config}" \
     --num-epochs "${num_epochs}" \
