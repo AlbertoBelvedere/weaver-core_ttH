@@ -1,12 +1,13 @@
 #!/bin/bash
 
-#SBATCH --job-name=weaver_cpv
+#SBATCH --job-name=weaver_stxs
 #SBATCH --output=slurm_logs/%x_%j.out
 #SBATCH --error=slurm_logs/%x_%j.err
 #SBATCH --account=gpu_gres
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
-#SBATCH --ntasks=5
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G
 #SBATCH --time=1-00:00
@@ -15,8 +16,8 @@ set -e
 
 usage() {
     echo "Usage: $0 [VAR=value ...] <executable> [arguments ...]"
-    echo "Example: $0 NUM_EPOCHS=10 ./execution_scripts/launcher_cpv_part_2lss.sh --demo"
-    echo "Example: sbatch [slurm options] $0 NUM_EPOCHS=10 ./execution_scripts/launcher_cpv_part_2lss.sh --demo"
+    echo "Example: $0 NUM_EPOCHS=10 ./execution_scripts/launcher_stxs.sh --demo"
+    echo "Example: $0 MODE=test ./execution_scripts/launcher_stxs.sh"
 }
 
 if [ "$#" -lt 1 ]; then
