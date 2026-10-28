@@ -135,3 +135,7 @@ runs/
 slurm_logs/
 evaluation_output/
 logs_full_model/
+# input data, generated weight files, editor settings
+*.root
+*.npz
+.vscode/
