@@ -12,10 +12,10 @@ get_evaluate_fn = _base.get_evaluate_fn
 
 def get_model(data_config, **kwargs):
     names = data_config.input_dicts["event_features"]
-    angular = tuple(i for i, name in enumerate(names) if name.startswith(("dEta", "dPhi", "dR")))
+    angular = tuple(i for i, name in enumerate(names) if name.startswith(("dEta", "dPhi", "dR")) or name.endswith("MinDR"))
     b_coefficients = tuple(i for i, name in enumerate(names) if name in {f"b{j}_ttH" for j in range(1, 5)})
     eras = tuple(i for i, name in enumerate(names) if name.startswith("era_is_"))
     groups = (angular, b_coefficients, eras)
     if any(not group for group in groups) or sorted(i for group in groups for i in group) != list(range(len(names))):
-        raise ValueError(f"Expected only angular, b1_ttH--b4_ttH, and era event features; got {names}")
+        raise ValueError(f"Expected only angular (including MinDR), b1_ttH--b4_ttH, and era event features; got {names}")
     return _base.get_model(data_config, event_feature_groups=groups, **kwargs)

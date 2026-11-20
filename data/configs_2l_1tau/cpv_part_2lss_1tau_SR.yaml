@@ -1,7 +1,8 @@
 # Giorgio_ntuples/SR_2lss_1tau 2022--2023BPix. Keep the common 2lss
 # features, add one hadronic-tau token and tau-specific event variables.
-# The skim has tau0_pt/eta/phi but no tau mass or charge branch. Use a
-# massless visible four-vector and a separate tau identity flag.
+# The skim has tau0_pt/eta/phi and charge, but no tau mass or PDG ID.
+# Use a massless visible four-vector and derive the signed tau PDG ID
+# (tau- has charge -1 and PDG ID +15).
 # Training requires cp_even/cp_odd path aliases for the two weighted views.
 treename: CPSkim_2lss1tau
 
@@ -68,7 +69,7 @@ new_variables:
    lep_phi: np.stack([lepton0_phi, lepton1_phi, tau0_phi, met_phi], axis=1)
    lep_mass: np.stack([lepton0_mass, lepton1_mass, tau0_pt * 0., met_pt * 0.], axis=1)
    lep_mask: np.stack([lepton0_mask, lepton1_mask, tau0_pt > 0., met_pt * 0. + 1.], axis=1)
-   lep_pdgid: np.stack([lepton0_pdgId, lepton1_pdgId, tau0_pt * 0., met_pt * 0.], axis=1)
+   lep_pdgid: np.stack([lepton0_pdgId, lepton1_pdgId, -15. * tau0_charge, met_pt * 0.], axis=1)
    lep_is_met: np.stack([met_pt * 0., met_pt * 0., met_pt * 0., met_pt * 0. + 1.], axis=1)
    lep_is_tau: np.stack([tau0_pt * 0., tau0_pt * 0., tau0_pt * 0. + 1., tau0_pt * 0.], axis=1)
    lep_p4: _p4_from_ptetaphim(lep_pt, lep_eta, lep_phi, lep_mass)

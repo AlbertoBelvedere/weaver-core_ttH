@@ -33,9 +33,11 @@ extra_args=("${@:1}")
 start_lr=${START_LR:-1e-4}
 # WEIGHT_MODE remains an alias for older commands.
 data_variant=${DATA_VARIANT:-${WEIGHT_MODE:-fullweight}}
-if [[ "${data_variant}" == SR_2lss || "${data_variant}" == SR_2lss_extended || "${data_variant}" == SR_3l ]]; then
+if [[ "${data_variant}" == SR_2lss || "${data_variant}" == SR_2lss_extended || "${data_variant}" == SR_2lss_1tau || "${data_variant}" == SR_3l ]]; then
     if [[ "${data_variant}" == SR_3l ]]; then
         DATADIR=${DATADIR:-${WEAVER_DIR}/Giorgio_ntuples/SR_3l}
+    elif [[ "${data_variant}" == SR_2lss_1tau ]]; then
+        DATADIR=${DATADIR:-${WEAVER_DIR}/Giorgio_ntuples/SR_2lss_1tau}
     else
         DATADIR=${DATADIR:-${WEAVER_DIR}/Giorgio_ntuples/SR_2lss}
     fi
@@ -47,6 +49,7 @@ fi
 case "${data_variant}" in
     SR_2lss) default_data_config=data/configs_2l/cpv_part_2lss_SR.yaml ;;
     SR_2lss_extended) default_data_config=data/configs_2l/cpv_part_2lss_SR_extended.yaml ;;
+    SR_2lss_1tau) default_data_config=data/configs_2l_1tau/cpv_part_2lss_1tau_SR.yaml ;;
     SR_3l) default_data_config=data/configs_3l/cpv_part_3l_SR.yaml ;;
     *) default_data_config=data/configs_2l/cpv_part_2lss_${data_variant}.yaml ;;
 esac
@@ -89,7 +92,7 @@ esac
 
 if [[ ! -f "${data_config}" ]]; then
     echo "Data config not found: ${data_config}" >&2
-    echo "Use DATA_VARIANT=fullweight, DATA_VARIANT=fullweight_2024, DATA_VARIANT=SR_2lss, DATA_VARIANT=SR_2lss_extended, DATA_VARIANT=SR_3l, or set DATA_CONFIG explicitly." >&2
+    echo "Use DATA_VARIANT=fullweight, DATA_VARIANT=fullweight_2024, DATA_VARIANT=SR_2lss, DATA_VARIANT=SR_2lss_extended, DATA_VARIANT=SR_2lss_1tau, DATA_VARIANT=SR_3l, or set DATA_CONFIG explicitly." >&2
     exit 1
 fi
 
@@ -175,7 +178,7 @@ PY
     data_config="${split_data_config}"
 fi
 
-if [[ "${data_variant}" == SR_2lss || "${data_variant}" == SR_2lss_extended || "${data_variant}" == SR_3l ]]; then
+if [[ "${data_variant}" == SR_2lss || "${data_variant}" == SR_2lss_extended || "${data_variant}" == SR_2lss_1tau || "${data_variant}" == SR_3l ]]; then
     source_dir=$(realpath -e "${DATADIR}")
     shopt -s nullglob
     source_files=("${source_dir}"/TTH_ctcvcp*__*.root)
