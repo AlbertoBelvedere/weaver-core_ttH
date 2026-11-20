@@ -95,10 +95,13 @@ parser.add_argument('-o', '--network-option', nargs=2, action='append', default=
 parser.add_argument('-m', '--model-prefix', type=str, default='models/{auto}/network',
                     help='path to save or load the model; for training, this will be used as a prefix, so model snapshots '
                          'will saved to `{model_prefix}_epoch-%%d_state.pt` after each epoch, and the one with the best '
-                         'validation metric to `{model_prefix}_best_epoch_state.pt`; for testing, this should be the full path '
-                         'including the suffix, otherwise the one with the best validation metric will be used; '
+                         'validation loss to `{model_prefix}_best_epoch_state.pt` by default; for testing, this should be the full path '
+                         'including the suffix, otherwise the selected best checkpoint will be used; '
                          'for training, `{auto}` can be used as part of the path to auto-generate a name, '
                          'based on the timestamp and network configuration')
+parser.add_argument('--checkpoint-metric', choices=['loss', 'score'], default='loss',
+                    help='select the best training checkpoint by minimum validation loss (default), or by the '
+                         'previous task score (maximum for classification, minimum for regression)')
 parser.add_argument('--load-model-weights', type=str, default=None,
                     help='initialize model with pre-trained weights')
 parser.add_argument('--exclude-model-weights', type=str, default=None,
@@ -1088,7 +1091,7 @@ def _main(args):
             return
 
         # training loop
-        best_valid_metric = np.inf if args.regression_mode else 0
+        best_valid_metric = np.inf if (args.checkpoint_metric == 'loss' or args.regression_mode) else -np.inf
         grad_scaler = torch.GradScaler("cuda") if args.use_amp and args.amp_dtype == "fp16" else None
         for epoch in range(args.num_epochs):
             if args.load_epoch is not None:
@@ -1134,7 +1137,7 @@ def _main(args):
                     model.load_state_dict(
                         torch.load(args.model_prefix + "_epoch-%d_state.pt" % epoch, map_location=dev)
                     )
-                valid_metric = evaluate(
+                validation_result = evaluate(
                     model,
                     val_loader,
                     dev,
@@ -1144,8 +1147,22 @@ def _main(args):
                     tb_helper=tb,
                     extra_args=locals(),
                 )
+                if isinstance(validation_result, tuple) and len(validation_result) == 2:
+                    valid_score, valid_loss = validation_result
+                else:
+                    valid_score, valid_loss = validation_result, None
+                if args.checkpoint_metric == 'loss':
+                    if valid_loss is None:
+                        raise ValueError(
+                            'Validation evaluator must return (score, loss) when --checkpoint-metric=loss'
+                        )
+                    valid_metric = valid_loss
+                else:
+                    valid_metric = valid_score
                 is_best_epoch = (
-                    (valid_metric < best_valid_metric) if args.regression_mode else (valid_metric > best_valid_metric)
+                    (valid_metric < best_valid_metric)
+                    if (args.checkpoint_metric == 'loss' or args.regression_mode)
+                    else (valid_metric > best_valid_metric)
                 )
                 if is_best_epoch:
                     best_valid_metric = valid_metric
@@ -1158,8 +1175,8 @@ def _main(args):
                             args.model_prefix + "_best_epoch_optimizer.pt",
                         )
                 _logger.info(
-                    "Epoch #%d: Current validation metric: %.5f (best: %.5f)"
-                    % (epoch, valid_metric, best_valid_metric),
+                    "Epoch #%d: Current validation %s: %.5f (best: %.5f)"
+                    % (epoch, args.checkpoint_metric, valid_metric, best_valid_metric),
                     color="bold",
                 )
 
