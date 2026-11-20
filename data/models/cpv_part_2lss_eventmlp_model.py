@@ -83,7 +83,7 @@ class AllGather(torch.autograd.Function):
         return grads
 
 
-class CPVParticleTransformerTagger(nn.Module):
+class CPVParticleTransformerEventMLPTagger(nn.Module):
     def __init__(
         self,
         jet_input_dim,
@@ -97,7 +97,9 @@ class CPVParticleTransformerTagger(nn.Module):
         num_cls_layers=2,
         block_params=None,
         cls_block_params=None,
-        fc_params=((256, 0.1), (128, 0.1), (64, 0.1)),
+        event_embed_dims=(64, 64),
+        event_dropout=0.1,
+        fc_params=((128, 0.1), (64, 0.1)),
         activation="gelu",
         for_inference=False,
         use_amp=False,
@@ -128,9 +130,23 @@ class CPVParticleTransformerTagger(nn.Module):
             compile_model=compile_model,
         )
 
+        event_layers = []
+        event_dim = event_input_dim
+        for out_dim in event_embed_dims:
+            event_layers.extend(
+                [
+                    nn.Linear(event_dim, out_dim),
+                    nn.GELU() if activation == "gelu" else nn.ReLU(),
+                    nn.Dropout(event_dropout),
+                ]
+            )
+            event_dim = out_dim
+        self.event_embed = nn.Sequential(*event_layers)
+        self.event_embed_dim = event_dim
+
         embed_dim = embed_dims[-1] if len(embed_dims) else jet_input_dim
         classifier_layers = []
-        in_dim = embed_dim + event_input_dim
+        in_dim = embed_dim + self.event_embed_dim
         for out_dim, dropout in fc_params:
             classifier_layers.extend(
                 [
@@ -164,6 +180,7 @@ class CPVParticleTransformerTagger(nn.Module):
             if event_features.ndim == 3 and event_features.shape[-1] == 1:
                 event_features = event_features.squeeze(-1)
             event_features = torch.nan_to_num(event_features.float(), nan=0.0, posinf=0.0, neginf=0.0)
+            event_features = self.event_embed(event_features)
             event_repr = torch.cat([event_repr, event_features], dim=1)
 
         logits = self.classifier(event_repr)
@@ -493,7 +510,7 @@ def evaluate_weighted_classification(
 
     metric_value = weighted_auc if weighted_auc is not None else weighted_acc
     if for_training:
-        return metric_value
+        return metric_value, avg_loss
 
     observers = {k: _concat(v) for k, v in observers.items()}
     return metric_value, scores, labels, observers
@@ -505,7 +522,7 @@ def get_model(data_config, **kwargs):
     event_input_dim = len(data_config.input_dicts["event_features"])
     num_classes = len(data_config.label_value)
 
-    model = CPVParticleTransformerTagger(
+    model = CPVParticleTransformerEventMLPTagger(
         jet_input_dim=jet_input_dim,
         lep_input_dim=lep_input_dim,
         event_input_dim=event_input_dim,

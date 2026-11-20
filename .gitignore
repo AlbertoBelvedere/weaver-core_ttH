@@ -135,3 +135,4 @@ runs/
 slurm_logs/
 evaluation_output/
 logs_full_model/
+Giorgio_ntuples/

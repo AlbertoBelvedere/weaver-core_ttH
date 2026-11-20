@@ -148,7 +148,7 @@ weaver --data-train '/path/to/train_files/*/*/*/*/output_*.root' \
 Note:
 
 - `--data-train` and `--data-test` supports providing multiple entries, e.g., `--data-train /path/to/A /path/to/B /path/to/C`, and each entry also supports wildcards (`*`, `?`, etc. -- The python `glob` package is used to parse the paths).
-- `--data-test` is optional: if specified, the performance on the testing dataset will be automatically evaluated after the training, using the epoch giving the best performance on the validation set. The prediction output can be saved if `--predict-output` is also set.
+- `--data-test` is optional: if specified, the performance on the testing dataset will be automatically evaluated after the training, using the epoch with the lowest validation loss by default (`--checkpoint-metric score` restores score-based selection). The prediction output can be saved if `--predict-output` is also set.
 - for training, `--model-prefix` sets the _prefix_ part of the paths to save model snapshots.
   At the end of each epoch, the model parameters will be saved to `/path/to/models/prefix_epoch-%d_state.pt`,
   and the optimizer states will be saved to `/path/to/models/prefix_epoch-%d_optimizer.pt` in case the training is interrupted and needed to be resumed from a certain epoch.

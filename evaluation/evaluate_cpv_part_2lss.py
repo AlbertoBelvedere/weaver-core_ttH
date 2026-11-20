@@ -102,6 +102,12 @@ def parse_args():
         help="Event-weight branch used for the weighted ROC and confusion matrix.",
     )
     parser.add_argument(
+        "--class-weight-branches",
+        nargs=2,
+        metavar=("CP_EVEN", "CP_ODD"),
+        help="Multiply the event weight by the selected class weight branch.",
+    )
+    parser.add_argument(
         "--signed-weights",
         action="store_true",
         help="Use signed weights. By default absolute weights are used.",
@@ -181,12 +187,13 @@ def expand_input_files(input_dir, input_files, stem):
 
 
 def load_predictions(paths, args):
-    needed_branches = [
+    needed_branches = list(dict.fromkeys([
         args.label_branch,
         args.weight_branch,
         args.score_even_branch,
         args.score_odd_branch,
-    ]
+        *(args.class_weight_branches or []),
+    ]))
     arrays = {branch: [] for branch in needed_branches}
 
     for path in paths:
@@ -213,6 +220,11 @@ def load_predictions(paths, args):
 def sanitize_inputs(data, args):
     y_true = np.asarray(data[args.label_branch]).astype(np.int64)
     weights = np.asarray(data[args.weight_branch]).astype(np.float64)
+    if args.class_weight_branches:
+        even_branch, odd_branch = args.class_weight_branches
+        even_weights = np.asarray(data[even_branch]).astype(np.float64)
+        odd_weights = np.asarray(data[odd_branch]).astype(np.float64)
+        weights *= np.where(y_true == 0, even_weights, odd_weights)
     score_even = np.asarray(data[args.score_even_branch]).astype(np.float64)
     score_odd = np.asarray(data[args.score_odd_branch]).astype(np.float64)
 
@@ -449,6 +461,10 @@ def save_summary(output_dir, datasets, args, roc_results, cm, cm_norm, loss_summ
     lines.append("")
     lines.append(f"Label branch: {args.label_branch}")
     lines.append(f"Weight branch: {args.weight_branch}")
+    if args.class_weight_branches:
+        lines.append(
+            f"Class weight branches (CP even, CP odd): {', '.join(args.class_weight_branches)}"
+        )
     lines.append(f"Weight mode: {'signed' if args.signed_weights else 'absolute'}")
     lines.append(f"Confusion threshold on CP-odd score: {args.threshold}")
     for dataset in datasets:
