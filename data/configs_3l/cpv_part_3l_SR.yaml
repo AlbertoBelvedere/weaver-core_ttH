@@ -39,6 +39,8 @@ new_variables:
    era_is_2023: (eraFlag == 2) * 1.
    era_is_2023BPix: (eraFlag == 3) * 1.
    era_is_2024: (eraFlag == 4) * 1.
+   # costheta_ttbar uses -99 when undefined; keep only physical cosine values.
+   costheta_ttbar_clean: np.where(np.isfinite(costheta_ttbar) & (np.abs(costheta_ttbar) <= 1.), costheta_ttbar, 0.)
 
    # The first nCentralJets slots are central; the tree's Jet*_mask flags are always true.
    jet_mask: np.arange(6)[None, :] < np.expand_dims(nCentralJets, 1)
@@ -148,6 +150,7 @@ inputs:
          - [dRlep01, auto, 1]
          - [dRlep12, auto, 1]
          - [dRlep20, auto, 1]
+         - [costheta_ttbar_clean, auto, 1]
          - [b1_ttH, auto, 1]
          - [b2_ttH, auto, 1]
          - [b3_ttH, auto, 1]
