@@ -100,6 +100,8 @@ lr_tag=${lr_tag//-/m}
 lr_tag=${lr_tag//+/p}
 if [[ "${data_variant}" == SR_3l ]]; then
     project_name=cpv_part_3l
+elif [[ "${data_variant}" == SR_2lss_1tau ]]; then
+    project_name=cpv_part_2lss1tau
 else
     project_name=cpv_part_2lss
 fi
